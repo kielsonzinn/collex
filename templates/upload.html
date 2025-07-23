@@ -3,23 +3,56 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1"> <!-- ✅ Ajuste essencial para mobile -->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Upload de Imagem</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        /* 🔹 Overlay de loading */
+        #loadingOverlay {
+            display: none !important;
+            /* ✅ Garante que inicia escondido */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+    </style>
 </head>
 
 <body class="bg-light">
+
     <div class="container d-flex flex-column justify-content-center align-items-center min-vh-100">
-        <div class="card shadow-sm w-100" style="max-width: 400px;"> <!-- ✅ Limita largura em mobile -->
+        <div class="card shadow-sm w-100" style="max-width: 400px;">
             <div class="card-body">
                 <h2 class="h4 text-center mb-4">Upload de Imagem</h2>
-                <form action="/" method="POST" enctype="multipart/form-data">
+                <form action="/" method="POST" enctype="multipart/form-data" onsubmit="showLoading()">
                     <input type="file" name="image" class="form-control mb-3" required>
-                    <button type="submit" class="btn btn-primary w-100">Enviar</button> <!-- ✅ Botão full width -->
+                    <button type="submit" class="btn btn-primary w-100">Enviar</button>
                 </form>
             </div>
         </div>
     </div>
+
+    <!-- 🔹 Overlay com spinner -->
+    <div id="loadingOverlay" class="d-flex">
+        <div class="spinner-border text-primary" role="status" style="width: 4rem; height: 4rem;">
+            <span class="visually-hidden">Carregando...</span>
+        </div>
+    </div>
+
+    <script>
+        function showLoading() {
+            const overlay = document.getElementById('loadingOverlay');
+            overlay.style.display = 'flex';
+        }
+    </script>
+
 </body>
 
 </html>

@@ -42,7 +42,7 @@ def base64_to_cv2(base64_str):
     img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
     return img
 
-def extract_bottle_caps_from_upload(file_storage, size=(100, 100), save_dir="/tmp"):
+def extract_bottle_caps_from_upload(file_storage, size=(100, 100), save_dir=None):
     file_bytes = np.frombuffer(file_storage.read(), np.uint8)
     img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
 

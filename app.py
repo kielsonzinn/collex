@@ -42,6 +42,14 @@ def base64_to_cv2(base64_str):
     img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
     return img
 
+def rotate_image(img, angle):
+    """Roda a imagem em torno do centro, mantendo o mesmo tamanho."""
+    h, w = img.shape[:2]
+    center = (w // 2, h // 2)
+    matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
+    rotated = cv2.warpAffine(img, matrix, (w, h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+    return rotated
+
 def extract_bottle_caps_from_upload(file_storage, size=(100, 100), save_dir=None):
     file_bytes = np.frombuffer(file_storage.read(), np.uint8)
     img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
@@ -94,7 +102,6 @@ def extract_bottle_caps_from_upload(file_storage, size=(100, 100), save_dir=None
                 output_path = os.path.join(save_dir, f"cap_{i}.png")
                 pil_img.save(output_path, "PNG")
                 print(f"[SALVO] {output_path}")
-
     else:
         print("[INFO] Nenhuma tampinha detectada no upload.")
 
@@ -109,36 +116,48 @@ def prepare_image(image_base64, size=(100, 100)):
 def compare_images(image1, image2):
     return ssim(image1, image2)
 
-def find_similar_caps(cap_image, caps_dir, top_n=5, threshold=0.75):
+def find_similar_caps(cap_image, caps_dir, top_n=5, threshold=0.75, rotate_step=45):
+    """
+    Compara tampinhas com rotações diferentes.
+    Retorna [(score, caminho), ...]
+    """
     scores = []
+    h, w = cap_image.shape[:2]
+    rotated_versions = [rotate_image(cap_image, angle) for angle in range(0, 360, rotate_step)]
+
     for root, _, files in os.walk(caps_dir):
         for file in files:
             if file.lower().endswith(".png"):
                 cap_path = os.path.join(root, file)
                 cap_gray = cv2.cvtColor(cv2.imread(cap_path), cv2.COLOR_BGR2GRAY)
-                cap_gray = cv2.resize(cap_gray, cap_image.shape[::-1])
-                score = compare_images(cap_image, cap_gray)
-                scores.append((score, cap_path))
+                cap_gray = cv2.resize(cap_gray, (w, h))
+
+                best_score = 0
+                for rotated in rotated_versions:
+                    score = compare_images(rotated, cap_gray)
+                    if score > best_score:
+                        best_score = score
+                        if best_score >= 1.0:
+                            break
+
+                if best_score >= threshold:
+                    scores.append((best_score, cap_path))
 
     scores.sort(reverse=True, key=lambda x: x[0])
-    return [cap for score, cap in scores[:top_n] if score >= threshold]
+    return scores[:top_n]
 
 @app.route("/", methods=["GET", "POST"])
 def upload_image():
     if request.method == "POST":
         uploaded_file = request.files["image"]
-
         caps = extract_bottle_caps_from_upload(uploaded_file)
         images = [cv2_to_base64(pil_to_cv2(cap)) for cap in caps]
-
         return render_template("select.html", images=images)
-
     return render_template("upload.html")
 
 @app.route("/select", methods=["POST"])
 def select_images():
     selecteds = request.form.getlist("selected")
-
     quadro_extraido_dir = "images/quadro_extraido"
     retorno = {}
 
@@ -149,13 +168,14 @@ def select_images():
             print(f"Analisando considerando semelhança de {threshold}")
             similar_caps = find_similar_caps(cap_gray, quadro_extraido_dir, threshold=threshold)
             if similar_caps:
-                print(f"Achou...")
-                related_imgs_base64 = []
-                for cap_path in similar_caps:
+                related_imgs_data = []
+                for score, cap_path in similar_caps:
                     img = cv2.imread(cap_path)
-                    related_imgs_base64.append(cv2_to_base64(img))
-
-                retorno[image_base64] = related_imgs_base64
+                    related_imgs_data.append({
+                        "img": cv2_to_base64(img),
+                        "score": round(score * 100, 2)  # Percentual com 2 casas decimais
+                    })
+                retorno[image_base64] = related_imgs_data
                 break
             threshold = round(threshold - 0.05, 2)
 

@@ -10,7 +10,7 @@
     <style>
         /* 🔹 Overlay de loading */
         #loadingOverlay {
-            display: none !important;
+            display: none;
             position: fixed;
             top: 0;
             left: 0;
@@ -38,7 +38,7 @@
 <body class="bg-light">
     <div class="container py-4">
         <h2 class="h4 text-center mb-4">Selecione as Imagens</h2>
-        <form action="/select" method="POST" onsubmit="showLoading()">
+        <form id="selectionForm" action="/select" method="POST" onsubmit="return showLoading()">
             <div class="row g-3">
                 {% for img in images %}
                 <div class="col-6 col-sm-4 col-md-3 text-center">
@@ -64,8 +64,7 @@
         </form>
     </div>
 
-    <!-- 🔹 Overlay com spinner -->
-    <div id="loadingOverlay" class="d-flex">
+    <div id="loadingOverlay">
         <div class="spinner-border text-success" role="status" style="width: 4rem; height: 4rem;">
             <span class="visually-hidden">Carregando...</span>
         </div>
@@ -73,7 +72,14 @@
 
     <script>
         function showLoading() {
-            document.getElementById('loadingOverlay').style.display = 'flex';
+            const overlay = document.getElementById('loadingOverlay');
+            overlay.style.display = 'flex';
+
+            setTimeout(() => {
+                document.getElementById('selectionForm').submit();
+            }, 50);
+
+            return false; // ✅ Cancela o submit padrão (o submit manual será disparado no setTimeout)
         }
 
         function toggleSelection(card) {

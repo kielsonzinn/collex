@@ -15,6 +15,10 @@ logging.basicConfig(
     stream=sys.stdout
 )
 
+print("🔄 Processando imagens do diretório antes de iniciar o servidor...")
+extract_bottle_caps_from_directory("images/quadro", "images/quadro_extraido")
+print("✅ Processamento concluído. Iniciando servidor Flask...")
+
 app = Flask(__name__)
 
 # ✅ Converte arquivo enviado para base64
@@ -156,7 +160,4 @@ def select_images():
     return render_template("final.html", related=retorno)
 
 if __name__ == "__main__":
-    print("🔄 Processando imagens do diretório antes de iniciar o servidor...")
-    extract_bottle_caps_from_directory("images/quadro", "images/quadro_extraido")
-    print("✅ Processamento concluído. Iniciando servidor Flask...")
     app.run(host="0.0.0.0", port=5000)

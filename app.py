@@ -21,36 +21,35 @@ print("✅ Processamento concluído. Iniciando servidor Flask...")
 
 app = Flask(__name__)
 
-# ✅ Converte arquivo enviado para base64
 def image_to_base64(file):
     return base64.b64encode(file.read()).decode("utf-8")
 
-# ✅ Converte imagem OpenCV para base64
 def cv2_to_base64(img):
     _, buffer = cv2.imencode(".png", img)
     return base64.b64encode(buffer).decode("utf-8")
 
-# ✅ Converte PIL para OpenCV
 def pil_to_cv2(pil_img):
     img = np.array(pil_img)
-    if img.shape[2] == 4:  # RGBA -> BGRA
+    if img.shape[2] == 4:
         img = cv2.cvtColor(img, cv2.COLOR_RGBA2BGRA)
-    else:  # RGB -> BGR
+    else:
         img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
     return img
 
-# ✅ Converte base64 para OpenCV
 def base64_to_cv2(base64_str):
     img_data = base64.b64decode(base64_str)
     np_arr = np.frombuffer(img_data, np.uint8)
     img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
     return img
 
-# ✅ Extrai tampinhas da imagem enviada
-def extract_bottle_caps_from_upload(file_storage, size=(100, 100)):
+def extract_bottle_caps_from_upload(file_storage, size=(100, 100), save_dir="/tmp"):
     file_bytes = np.frombuffer(file_storage.read(), np.uint8)
     img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
-    
+
+    if img is None:
+        print("[ERRO] Não foi possível decodificar a imagem enviada.")
+        return []
+
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     gray = cv2.medianBlur(gray, 5)
 
@@ -58,7 +57,7 @@ def extract_bottle_caps_from_upload(file_storage, size=(100, 100)):
         gray,
         cv2.HOUGH_GRADIENT,
         dp=1.2,
-        minDist=500,
+        minDist=max(img.shape[:2]) // 3,
         param1=100,
         param2=50,
         minRadius=80,
@@ -68,43 +67,48 @@ def extract_bottle_caps_from_upload(file_storage, size=(100, 100)):
     caps = []
     if circles is not None:
         circles = np.round(circles[0, :]).astype("int")
-        for (x, y, r) in circles:
+        print(f"[INFO] {len(circles)} tampinhas detectadas no upload.")
+
+        for i, (x, y, r) in enumerate(circles, start=1):
             mask = np.zeros_like(img, dtype=np.uint8)
             cv2.circle(mask, (x, y), r, (255, 255, 255), -1)
-
             result = cv2.bitwise_and(img, mask)
-            cropped = result[y - r:y + r, x - r:x + r]
+
+            x1, y1 = max(0, x - r), max(0, y - r)
+            x2, y2 = min(img.shape[1], x + r), min(img.shape[0], y + r)
+            cropped = result[y1:y2, x1:x2]
 
             pil_img = Image.fromarray(cv2.cvtColor(cropped, cv2.COLOR_BGR2RGBA))
-
-            datas = pil_img.getdata()
-            new_data = []
-            for item in datas:
-                if item[0] == 0 and item[1] == 0 and item[2] == 0:
-                    new_data.append((0, 0, 0, 0))
-                else:
-                    new_data.append(item)
-            pil_img.putdata(new_data)
+            pil_img.putdata([
+                (0, 0, 0, 0) if (r == 0 and g == 0 and b == 0) else (r, g, b, a)
+                for (r, g, b, a) in pil_img.getdata()
+            ])
 
             if size:
                 pil_img = pil_img.resize(size, Image.LANCZOS)
 
             caps.append(pil_img)
 
+            if save_dir:
+                os.makedirs(save_dir, exist_ok=True)
+                output_path = os.path.join(save_dir, f"cap_{i}.png")
+                pil_img.save(output_path, "PNG")
+                print(f"[SALVO] {output_path}")
+
+    else:
+        print("[INFO] Nenhuma tampinha detectada no upload.")
+
     return caps
 
-# ✅ Prepara imagem (agora recebe base64)
 def prepare_image(image_base64, size=(100, 100)):
     img = base64_to_cv2(image_base64)
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     gray = cv2.resize(gray, size)
     return gray
 
-# ✅ Compara duas imagens
 def compare_images(image1, image2):
     return ssim(image1, image2)
 
-# ✅ Busca tampinhas similares no diretório
 def find_similar_caps(cap_image, caps_dir, top_n=5, threshold=0.75):
     scores = []
     for root, _, files in os.walk(caps_dir):
@@ -119,7 +123,6 @@ def find_similar_caps(cap_image, caps_dir, top_n=5, threshold=0.75):
     scores.sort(reverse=True, key=lambda x: x[0])
     return [cap for score, cap in scores[:top_n] if score >= threshold]
 
-# ✅ Endpoint de upload
 @app.route("/", methods=["GET", "POST"])
 def upload_image():
     if request.method == "POST":
@@ -147,7 +150,6 @@ def select_images():
             similar_caps = find_similar_caps(cap_gray, quadro_extraido_dir, threshold=threshold)
             if similar_caps:
                 print(f"Achou...")
-                # ✅ Converter todos os caminhos encontrados para base64
                 related_imgs_base64 = []
                 for cap_path in similar_caps:
                     img = cv2.imread(cap_path)

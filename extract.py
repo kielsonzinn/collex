@@ -20,7 +20,8 @@ def extract_bottle_caps_from_directory(
     param1=100,
     param2=30,
     minRadius=30,
-    maxRadius=60
+    maxRadius=60,
+    extra_radius=15
 ):
     os.makedirs(output_dir, exist_ok=True)
     total_caps = 0
@@ -58,28 +59,25 @@ def extract_bottle_caps_from_directory(
             logging.info(f"Analisando imagem: {image_name}, {len(circles)} tampinha(s) detectada(s).")
 
             for i, (x, y, r) in enumerate(circles, start=1):
-                # Criar máscara circular
+                r = r + extra_radius
+
                 mask = np.zeros_like(image, dtype=np.uint8)
                 cv2.circle(mask, (x, y), r, (255, 255, 255), -1)
                 result = cv2.bitwise_and(image, mask)
-                cropped = result[y - r:y + r, x - r:x + r]
 
-                # Converter para PIL e remover fundo preto
+                x1, y1 = max(0, x - r), max(0, y - r)
+                x2, y2 = min(image.shape[1], x + r), min(image.shape[0], y + r)
+                cropped = result[y1:y2, x1:x2]
+
                 pil_img = Image.fromarray(cv2.cvtColor(cropped, cv2.COLOR_BGR2RGBA))
-                datas = pil_img.getdata()
-                new_data = []
-                for item in datas:
-                    if item[0] == 0 and item[1] == 0 and item[2] == 0:
-                        new_data.append((0, 0, 0, 0))
-                    else:
-                        new_data.append(item)
-                pil_img.putdata(new_data)
+                pil_img.putdata([
+                    (0, 0, 0, 0) if (r == 0 and g == 0 and b == 0) else (r, g, b, a)
+                    for (r, g, b, a) in pil_img.getdata()
+                ])
 
-                # Redimensionar
                 if size:
                     pil_img = pil_img.resize(size, Image.LANCZOS)
 
-                # Salvar como PNG com fundo transparente
                 output_path = os.path.join(image_output_dir, f"cap_{i}.png")
                 pil_img.save(output_path, "PNG")
 

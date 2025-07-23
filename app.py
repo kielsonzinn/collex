@@ -116,7 +116,7 @@ def prepare_image(image_base64, size=(100, 100)):
 def compare_images(image1, image2):
     return ssim(image1, image2)
 
-def find_similar_caps(cap_image, caps_dir, top_n=5, threshold=0.75, rotate_step=45):
+def find_similar_caps(cap_image, caps_dir, top_n=5, threshold=0.75, rotate_step=180):
     """
     Compara tampinhas com rotações diferentes.
     Retorna [(score, caminho), ...]

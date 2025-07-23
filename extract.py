@@ -2,6 +2,14 @@ import os
 import cv2
 import numpy as np
 from PIL import Image
+import logging
+import sys
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s %(levelname)s: %(message)s',
+    stream=sys.stdout
+)
 
 def extract_bottle_caps_from_directory(
     input_dir="images/quadro",
@@ -25,7 +33,7 @@ def extract_bottle_caps_from_directory(
         image_output_dir = os.path.join(output_dir, os.path.splitext(image_name)[0])
 
         if os.path.exists(image_output_dir) and len(os.listdir(image_output_dir)) > 0:
-            print(f"[SKIP] {image_name} já foi processada. Pulando...")
+            logging.info(f"[SKIP] {image_name} já foi processada. Pulando...")
             continue
 
         os.makedirs(image_output_dir, exist_ok=True)
@@ -47,7 +55,7 @@ def extract_bottle_caps_from_directory(
 
         if circles is not None:
             circles = np.round(circles[0, :]).astype("int")
-            print(f"Analisando imagem: {image_name}, {len(circles)} tampinhas detectadas.")
+            logging.info(f"Analisando imagem: {image_name}, {len(circles)} tampinha(s) detectada(s).")
 
             for i, (x, y, r) in enumerate(circles, start=1):
                 # Criar máscara circular
@@ -76,13 +84,9 @@ def extract_bottle_caps_from_directory(
                 pil_img.save(output_path, "PNG")
 
             total_caps += len(circles)
-            print(f"Imagem {image_name} - {len(circles)} tampinhas extraídas.")
+            logging.info(f"Imagem {image_name} - {len(circles)} tampinha(s) extraída(s).")
         else:
-            print(f"Imagem {image_name} - Nenhuma tampinha detectada.")
+            logging.info(f"Imagem {image_name} - Nenhuma tampinha detectada.")
 
-    print(f"\nTampinhas detectadas no total: {total_caps}")
+    logging.info(f"✅ Tampinhas detectadas no total: {total_caps}")
     return total_caps
-
-
-if __name__ == "__main__":
-    extract_bottle_caps_from_directory()

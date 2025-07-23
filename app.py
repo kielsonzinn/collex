@@ -6,6 +6,14 @@ from PIL import Image
 import os
 from skimage.metrics import structural_similarity as ssim
 from extract import extract_bottle_caps_from_directory
+import logging
+import sys
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s %(levelname)s: %(message)s',
+    stream=sys.stdout
+)
 
 app = Flask(__name__)
 

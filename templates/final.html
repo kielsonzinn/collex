@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Resultado Final</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="p-4">
+<div class="container">
+    <h2>Resultado Final</h2>
+    {% for main_img, related_imgs in related.items() %}
+    <div class="card my-3 p-3">
+        <h5>Imagem Principal</h5>
+        <img src="data:image/png;base64,{{ main_img }}" class="img-thumbnail mb-2" style="max-width: 200px;">
+        <h6>Imagens Relacionadas:</h6>
+        <div class="d-flex flex-wrap">
+            {% for rimg in related_imgs %}
+            <img src="data:image/png;base64,{{ rimg }}" class="img-thumbnail m-1" style="max-width: 100px;">
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+    <a href="/" class="btn btn-secondary mt-3">Voltar para Home</a>
+</div>
+</body>
+</html>
